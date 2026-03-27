@@ -16,6 +16,7 @@ from opssentinel.event_bus.bus import EventBus
 from opssentinel.exception.engine import ExceptionEngine
 from opssentinel.geo_simulator.simulator import GeoSimulator
 from opssentinel.llm.openai_client import LLMDecisionEngine
+from opssentinel.mcp import build_default_mcp_gateway
 from opssentinel.processor.processor import EventProcessor
 from opssentinel.state.store import StateStore
 
@@ -27,6 +28,7 @@ async def run_pipeline(
     stationary_threshold_sec: int = 3,
     llm_enabled: bool = False,
     llm_model: str | None = None,
+    mcp_enabled: bool = False,
     tms_provider: str = "none",
     wms_enabled: bool = False,
 ) -> Dict[str, Any]:
@@ -34,6 +36,7 @@ async def run_pipeline(
     store = StateStore()
 
     llm_engine = LLMDecisionEngine(model=llm_model) if llm_enabled else None
+    mcp_gateway = build_default_mcp_gateway() if mcp_enabled else None
     if llm_enabled and (not llm_engine or not llm_engine.enabled):
         raise RuntimeError("LLM mode requested but OPENAI_API_KEY is not configured.")
 
@@ -43,10 +46,11 @@ async def run_pipeline(
         store,
         stationary_threshold_sec=stationary_threshold_sec,
         llm_engine=llm_engine,
+        mcp_gateway=mcp_gateway,
     )
-    classification_agent = ClassificationAgent(bus, store, llm_engine=llm_engine)
-    prioritization_agent = PrioritizationAgent(bus, store, llm_engine=llm_engine)
-    decision_agent = DecisionAgent(bus, store, llm_engine=llm_engine)
+    classification_agent = ClassificationAgent(bus, store, llm_engine=llm_engine, mcp_gateway=mcp_gateway)
+    prioritization_agent = PrioritizationAgent(bus, store, llm_engine=llm_engine, mcp_gateway=mcp_gateway)
+    decision_agent = DecisionAgent(bus, store, llm_engine=llm_engine, mcp_gateway=mcp_gateway)
     exception_engine = ExceptionEngine(bus, store)
     action_service = ActionService(store)
     geo_simulator = GeoSimulator(bus, tick_seconds=tick_seconds, total_ticks=total_ticks)
@@ -79,11 +83,12 @@ async def run_pipeline(
     bus.subscribe("actions", action_service.handle_action)
 
     logging.getLogger("opssentinel.runtime").info(
-        "run pipeline ticks=%d tick_seconds=%.2f llm_enabled=%s llm_model=%s tms_provider=%s wms_enabled=%s",
+        "run pipeline ticks=%d tick_seconds=%.2f llm_enabled=%s llm_model=%s mcp_enabled=%s tms_provider=%s wms_enabled=%s",
         total_ticks,
         tick_seconds,
         bool(llm_engine and llm_engine.enabled),
         llm_model,
+        mcp_enabled,
         tms_provider,
         wms_enabled,
     )
@@ -109,6 +114,7 @@ async def run_pipeline(
         "llm_enabled": bool(llm_engine and llm_engine.enabled),
         "llm_model": llm_engine.model if llm_engine else None,
         "llm_metrics": snapshot.get("metrics", {}),
+        "mcp_enabled": bool(mcp_gateway),
         "tms_provider": tms_provider,
         "wms_enabled": wms_enabled,
     }

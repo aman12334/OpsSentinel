@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from opssentinel.event_bus.bus import EventBus
 from opssentinel.llm.openai_client import LLMDecisionEngine
+from opssentinel.mcp import MCPGateway, MCPToolError
 from opssentinel.state.store import StateStore, utc_now_iso
 
 SEVERITY_ORDER = ["low", "medium", "high", "critical"]
@@ -56,11 +57,13 @@ class DetectionAgent:
         store: StateStore,
         stationary_threshold_sec: int = 18,
         llm_engine: LLMDecisionEngine | None = None,
+        mcp_gateway: MCPGateway | None = None,
     ) -> None:
         self.bus = bus
         self.store = store
         self.stationary_threshold_sec = stationary_threshold_sec
         self.llm_engine = llm_engine
+        self.mcp_gateway = mcp_gateway
         self._logger = logging.getLogger("opssentinel.agent.detection")
 
     def detect(
@@ -230,10 +233,17 @@ class DetectionAgent:
 class ClassificationAgent:
     """Agent 2: deterministic exception classification."""
 
-    def __init__(self, bus: EventBus, store: StateStore, llm_engine: LLMDecisionEngine | None = None) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        store: StateStore,
+        llm_engine: LLMDecisionEngine | None = None,
+        mcp_gateway: MCPGateway | None = None,
+    ) -> None:
         self.bus = bus
         self.store = store
         self.llm_engine = llm_engine
+        self.mcp_gateway = mcp_gateway
         self._logger = logging.getLogger("opssentinel.agent.classification")
 
     @staticmethod
@@ -320,10 +330,17 @@ class ClassificationAgent:
 class PrioritizationAgent:
     """Agent 3: deterministic prioritization / severity assignment."""
 
-    def __init__(self, bus: EventBus, store: StateStore, llm_engine: LLMDecisionEngine | None = None) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        store: StateStore,
+        llm_engine: LLMDecisionEngine | None = None,
+        mcp_gateway: MCPGateway | None = None,
+    ) -> None:
         self.bus = bus
         self.store = store
         self.llm_engine = llm_engine
+        self.mcp_gateway = mcp_gateway
         self._logger = logging.getLogger("opssentinel.agent.prioritization")
 
     @staticmethod
@@ -385,6 +402,61 @@ class PrioritizationAgent:
         reason = ", ".join(reasons) if reasons else "baseline prioritization"
         return severity, reason
 
+    async def _mcp_enrich(
+        self,
+        event: Dict[str, Any],
+        classification: str,
+        severity: str,
+        reason: str,
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        if not self.mcp_gateway:
+            return severity, reason, {}
+        if classification == "false_positive" or event.get("event_type") == "movement_resumed":
+            return severity, reason, {}
+
+        signals = event.get("signals", {})
+        enrichments: Dict[str, Any] = {}
+
+        try:
+            geo = await self.mcp_gateway.call_tool(
+                "geo.route_risk",
+                {
+                    "route_remaining_ratio": signals.get("route_remaining_ratio", 0.5),
+                    "speed": signals.get("speed", 0.0),
+                },
+            )
+            enrichments["geo"] = geo
+            if float(geo.get("route_risk_score", 0.0) or 0.0) >= 0.8:
+                severity = self._bump_severity(severity, 1)
+                reason = f"{reason}, high route risk via MCP"
+        except MCPToolError as exc:
+            self._logger.warning("mcp geo enrichment failed: %s", exc)
+
+        try:
+            profile = await self.mcp_gateway.call_tool(
+                "tms.shipment_profile",
+                {"shipment_id": signals.get("shipment_id", "")},
+            )
+            enrichments["tms"] = profile
+            if profile.get("customer_tier") == "enterprise":
+                severity = self._bump_severity(severity, 1)
+                reason = f"{reason}, enterprise shipment tier via MCP"
+        except MCPToolError as exc:
+            self._logger.warning("mcp tms enrichment failed: %s", exc)
+
+        issue_type = signals.get("issue_type")
+        if issue_type:
+            try:
+                wms = await self.mcp_gateway.call_tool("wms.order_risk", {"issue_type": issue_type})
+                enrichments["wms"] = wms
+                if bool(wms.get("fulfillment_blocked")):
+                    severity = self._bump_severity(severity, 1)
+                    reason = f"{reason}, fulfillment blocked via MCP"
+            except MCPToolError as exc:
+                self._logger.warning("mcp wms enrichment failed: %s", exc)
+
+        return severity, reason, enrichments
+
     async def handle_classified_event(self, event: Dict[str, Any]) -> None:
         entity_id = event["entity"]["id"]
         classification = event["classification"]
@@ -395,6 +467,7 @@ class PrioritizationAgent:
 
         correlation_history = await self.store.get_correlation_history(correlation_id)
         severity, reason = self.prioritize(event, classification, correlation_history)
+        severity, reason, mcp_enrichment = await self._mcp_enrich(event, classification, severity, reason)
         llm_used = False
         if self.llm_engine and self.llm_engine.enabled:
             llm_context = {
@@ -427,6 +500,7 @@ class PrioritizationAgent:
             **event,
             "severity": severity,
             "prioritization_reason": reason,
+            "mcp_enrichment": mcp_enrichment,
             "shared_context": shared,
             "trace": {
                 "trace_id": trace_id,
@@ -446,6 +520,7 @@ class PrioritizationAgent:
                 "classification": classification,
                 "severity": severity,
                 "reason": reason,
+                "mcp_enrichment": mcp_enrichment,
                 "correlation_id": correlation_id,
                 "llm_used": llm_used,
             },
@@ -463,10 +538,17 @@ class PrioritizationAgent:
 class DecisionAgent:
     """Agent 4: deterministic policy decision."""
 
-    def __init__(self, bus: EventBus, store: StateStore, llm_engine: LLMDecisionEngine | None = None) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        store: StateStore,
+        llm_engine: LLMDecisionEngine | None = None,
+        mcp_gateway: MCPGateway | None = None,
+    ) -> None:
         self.bus = bus
         self.store = store
         self.llm_engine = llm_engine
+        self.mcp_gateway = mcp_gateway
         self._logger = logging.getLogger("opssentinel.agent.decision")
 
     @staticmethod

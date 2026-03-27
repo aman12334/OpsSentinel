@@ -27,6 +27,7 @@ with st.sidebar:
     stationary_threshold = st.slider("Stationary Threshold (sec)", min_value=2, max_value=60, value=3, step=1)
     llm_enabled = st.toggle("Enable LLM Decision Agent", value=False)
     llm_model = st.text_input("LLM Model", value="gpt-4.1-mini")
+    mcp_enabled = st.toggle("Enable MCP Tool Gateway", value=True)
     tms_provider = st.selectbox(
         "TMS Feed",
         options=["none", "mock", "easypost", "aftership", "shippo"],
@@ -48,6 +49,7 @@ if run_clicked:
                     stationary_threshold_sec=stationary_threshold,
                     llm_enabled=llm_enabled,
                     llm_model=llm_model,
+                    mcp_enabled=mcp_enabled,
                     tms_provider=tms_provider,
                     wms_enabled=wms_enabled,
                 )
@@ -72,7 +74,10 @@ col1, col2, col3, col4 = st.columns(4)
 col1.metric("Entities", len(entities))
 col2.metric("Exceptions", len(exceptions))
 col3.metric("Actions", len(actions))
-col4.metric("LLM Active", "Yes" if result.get("llm_enabled") else "No")
+col4.metric(
+    "LLM/MCP",
+    f"{'LLM on' if result.get('llm_enabled') else 'LLM off'} | {'MCP on' if result.get('mcp_enabled') else 'MCP off'}",
+)
 
 st.subheader("LLM Quality Metrics")
 m1, m2, m3, m4 = st.columns(4)

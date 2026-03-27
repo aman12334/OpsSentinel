@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stationary-threshold-sec", type=int, default=3)
     parser.add_argument("--llm", action="store_true", help="Enable LLM-powered decision override")
     parser.add_argument("--llm-model", type=str, default=None)
+    parser.add_argument("--mcp-enabled", action="store_true", help="Enable MCP tool gateway for agent enrichment")
     parser.add_argument(
         "--tms-provider",
         type=str,
@@ -46,6 +47,7 @@ async def _main(args: argparse.Namespace) -> None:
         stationary_threshold_sec=args.stationary_threshold_sec,
         llm_enabled=args.llm,
         llm_model=args.llm_model,
+        mcp_enabled=args.mcp_enabled,
         tms_provider=args.tms_provider,
         wms_enabled=args.wms_enabled,
     )
@@ -55,13 +57,14 @@ async def _main(args: argparse.Namespace) -> None:
     llm_metrics = result.get("llm_metrics", {})
 
     logging.getLogger("opssentinel.main").info(
-        "run complete entities=%d exceptions=%d actions=%d correlations=%d traces=%d llm_enabled=%s tms_provider=%s wms_enabled=%s llm_calls_total=%d llm_calls_valid=%d llm_calls_invalid=%d llm_fallbacks_used=%d",
+        "run complete entities=%d exceptions=%d actions=%d correlations=%d traces=%d llm_enabled=%s mcp_enabled=%s tms_provider=%s wms_enabled=%s llm_calls_total=%d llm_calls_valid=%d llm_calls_invalid=%d llm_fallbacks_used=%d",
         len(snapshot["entities"]),
         len(snapshot["exceptions"]),
         len(actions),
         len(snapshot["correlations"]),
         len(snapshot["traces"]),
         result["llm_enabled"],
+        result.get("mcp_enabled"),
         result.get("tms_provider"),
         result.get("wms_enabled"),
         int(llm_metrics.get("llm_calls_total", 0)),
