@@ -1,0 +1,6 @@
+RAW_INGEST_TOPIC = "ingest.raw"
+PROCESSED_TOPIC = "events.processed"
+EXCEPTIONS_TOPIC = "exceptions.detected"
+ACTIONS_DECIDED_TOPIC = "actions.decided"
+ACTIONS_EXECUTED_TOPIC = "actions.executed"
+EXCEPTIONS_RESOLVED_TOPIC = "exceptions.resolved"

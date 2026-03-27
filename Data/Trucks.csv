@@ -1,0 +1,16 @@
+truck_id,current_location,status,last_update_ts,assigned_route
+TRK1,Dallas TX,moving,2026-01-23T20:10:00Z,RT45
+TRK2,Plano TX,moving,2026-01-23T20:15:00Z,RT45
+TRK3,Little Rock AR,stopped,2026-01-23T19:40:00Z,RT45
+TRK4,Memphis TN,arrived,2026-01-23T20:05:00Z,RT45
+TRK5,Austin TX,moving,2026-01-23T20:25:00Z,RT12
+TRK6,Waco TX,delayed,2026-01-23T19:50:00Z,RT12
+TRK7,Abilene TX,moving,2026-01-23T20:30:00Z,RT12
+TRK8,Nashville TN,arrived,2026-01-23T20:00:00Z,RT12
+TRK9,Flagstaff AZ,stopped,2026-01-23T19:55:00Z,RT77
+TRK10,Kingman AZ,moving,2026-01-23T20:20:00Z,RT77
+TRK11,Phoenix AZ,arrived,2026-01-23T20:35:00Z,RT77
+TRK12,San Jose CA,moving,2026-01-23T20:10:00Z,RT88
+TRK13,Fresno CA,delayed,2026-01-23T19:45:00Z,RT88
+TRK14,Bakersfield CA,moving,2026-01-23T20:25:00Z,RT88
+TRK15,Los Angeles CA,arrived,2026-01-23T20:40:00Z,RT88

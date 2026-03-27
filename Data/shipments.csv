@@ -1,0 +1,14 @@
+shipment_id,customer,origin,destination,sla_hours,priority
+SHP1001,Walmart,Dallas TX,Memphis TN,24,critical
+SHP1002,Target,Dallas TX,Memphis TN,48,high
+SHP1003,Amazon,Austin TX,Nashville TN,36,medium
+SHP1004,Costco,Austin TX,Nashville TN,48,high
+SHP1005,Home Depot,Houston TX,Atlanta GA,36,medium
+SHP1006,Lowes,Houston TX,Atlanta GA,24,critical
+SHP1007,Best Buy,San Jose CA,Phoenix AZ,48,high
+SHP1008,Apple,San Jose CA,Phoenix AZ,24,critical
+SHP1009,Wayfair,San Jose CA,Phoenix AZ,72,low
+SHP1010,Chewy,Los Angeles CA,San Francisco CA,36,medium
+SHP1011,Nike,Los Angeles CA,San Francisco CA,24,critical
+SHP1012,Target,Los Angeles CA,San Francisco CA,48,high
+SHP1013,Amazon,Los Angeles CA,San Francisco CA,36,medium

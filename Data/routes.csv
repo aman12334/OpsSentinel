@@ -1,0 +1,6 @@
+route_id,start_city,end_city,planned_duration_minutes
+RT45,Dallas TX,Memphis TN,540
+RT12,Austin TX,Nashville TN,720
+RT77,San Jose CA,Phoenix AZ,780
+RT88,Los Angeles CA,San Francisco CA,420
+RT91,Houston TX,Atlanta GA,780

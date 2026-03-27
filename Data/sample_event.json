@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "event_id": "evt_001",
+  "event_type": "delay_detected",
+  "source": "gps",
+  "timestamp": "2026-01-29T18:45:00Z",
+  "entity": {
+    "type": "truck",
+    "id": "TRK12"
+  },
+  "text": "Truck TRK12 has not moved for 55 minutes",
+  "signals": {
+    "delay_minutes": 55
+  },
+  "confidence": 0.9
+}
